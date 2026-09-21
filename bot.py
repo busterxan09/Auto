@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher, F, types
 from aiogram.types import ReactionTypeEmoji
 
 BOT_TOKEN = "8827183894:AAGzagONk1HfYdqyEmVISm_cggLr4mGjipE"
-DEFAULT_REACTIONS = ["❤️", "🔥", "👍", "😍"]
+DEFAULT_REACTIONS = ["🔥"]
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)

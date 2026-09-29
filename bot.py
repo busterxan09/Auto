@@ -1,12 +1,10 @@
-import os
+import time
 import random
-from flask import Flask, request
 import telebot
 
-app = Flask(__name__)
-
+# 10 ta bot tokenlari
 TOKENS = [
-    "8518942139:AAFSbCQ7QR3q5bBZIa7M9lVJTk23L7N7KrA",
+    "8518942139:AAFSbCQ7QR3q5bBZIa7M9lVJTk23L7N7KrA",  # Asosiy kuzatuvchi bot
     "8827183894:AAEhPJdrjavzfAAYiqs3nre4To5Uj3OZO_M",
     "8969735951:AAFyhvumyXv03gvw1o4r4U_47NVTeYnQOiI",
     "8841360251:AAFK8jWz2n5hKYCHuMCwyNjKP8I-_CMSorg",
@@ -20,57 +18,44 @@ TOKENS = [
 
 REACTIONS = ["👍", "❤️", "🔥", "🥰", "👏", "😁", "🤩", "🫡", "🚀", "🎉"]
 
-WEBHOOK_URL_BASE = "https://worker-production-755e.up.railway.app"
+# Barcha bot obyektlarini yaratib olamiz
+bot_instances = [telebot.TeleBot(token) for token in TOKENS]
 
-# Инициализируем ботов
-bots = {}
-for token in TOKENS:
-    bot_id = token.split(":")[0]
-    b = telebot.TeleBot(token, threaded=False)
+# Faqat 1-bot kanaldagi yangi postlarni eshitadi (Conflict 409 xatosi umuman bo'lmaydi!)
+main_bot = bot_instances[0]
+
+# Har bir botdan keladigan webhooklarni tozalaymiz
+for b in bot_instances:
+    try:
+        b.remove_webhook()
+    except Exception:
+        pass
+
+print("Barcha botlar tayyorlandi. Kanal kuzatilmoqda...")
+
+@main_bot.channel_post_handler(func=lambda msg: True)
+def handle_channel_post(message):
+    print(f"\n[YANGI POST DETEKT QILINDI] ID: {message.message_id}")
     
-    # Регистрируем обработчик постов для каждого бота
-    @b.channel_post_handler(func=lambda msg: True)
-    def handle_channel_post(message, current_bot=b, b_id=bot_id):
+    # 10 ta botning har biri navbat bilan reaksiya bosadi
+    for i, bot_obj in enumerate(bot_instances, start=1):
         try:
             chosen_emoji = random.choice(REACTIONS)
-            current_bot.set_message_reaction(
+            bot_obj.set_message_reaction(
                 chat_id=message.chat.id,
                 message_id=message.message_id,
                 reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
             )
-            print(f"[УСПЕХ] Реакция ({chosen_emoji}) поставлена | Бот: {b_id}")
+            print(f"--> [{i}/10] Bot reaksiya qo'ydi: {chosen_emoji}")
+            time.sleep(0.3) # Telegram API flood-limitga tushmasligi uchun kichik pauza
         except Exception as e:
-            print(f"[ОШИБКА] Не удалось поставить реакцию ({b_id}): {e}")
-
-    bots[bot_id] = b
-
-@app.route("/", methods=["GET", "HEAD"])
-def index():
-    return "OK", 200
-
-@app.route("/webhook/<bot_id>", methods=["POST"])
-def webhook(bot_id):
-    if bot_id in bots:
-        json_string = request.get_data().decode("utf-8")
-        update = telebot.types.Update.de_json(json_string)
-        if update:
-            # Передаем обновление в обработчик telebot
-            bots[bot_id].process_new_updates([update])
-    return "OK", 200
-
-def setup_webhooks():
-    for token in TOKENS:
-        bot_id = token.split(":")[0]
-        webhook_url = f"{WEBHOOK_URL_BASE}/webhook/{bot_id}"
-        bot = bots[bot_id]
-        try:
-            bot.remove_webhook()
-            bot.set_webhook(url=webhook_url, allowed_updates=["channel_post"])
-            print(f"Webhook установлен для: {bot_id}")
-        except Exception as e:
-            print(f"Ошибка установки Webhook ({bot_id}): {e}")
+            print(f"--> [{i}/10] Bot reaksiyasida xatolik: {e}")
 
 if __name__ == "__main__":
-    setup_webhooks()
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    while True:
+        try:
+            # Faqat 1 ta bot Telegram bilan bog'lanadi va postlarni ushlaydi
+            main_bot.polling(non_stop=True, interval=2, timeout=20)
+        except Exception as e:
+            print(f"Ulanishda uzilish: {e}")
+            time.sleep(5)

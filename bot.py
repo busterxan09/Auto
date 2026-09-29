@@ -1,7 +1,11 @@
-import telebot
+import os
 import random
-import time
-from threading import Thread
+import telebot
+from flask import Flask, request
+
+# Railway taqdim etgan domen (oxiridagi / belgisisiz):
+WEBHOOK_URL = "https://worker-production-755e.up.railway.app"
+
 
 TOKENS = [
     "8518942139:AAFSbCQ7QR3q5bBZIa7M9lVJTk23L7N7KrA",
@@ -18,42 +22,46 @@ TOKENS = [
 
 REACTIONS = ["❤️", "🔥", "😍", "👏", "💯", "🤩", "🫡", "🚀", "🥰"]
 
-def run_bot(token):
-    bot = telebot.TeleBot(token)
+app = Flask(__name__)
+bots = {}
 
-    @bot.channel_post_handler(func=lambda message: True)
-    def handle_post(message):
-        try:
-            chosen_emoji = random.choice(REACTIONS)
-            bot.set_message_reaction(
-                chat_id=message.chat.id,
-                message_id=message.message_id,
-                reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
-            )
-            print(f"Reaksiya ({chosen_emoji}) qo'yildi | Bot: {token[:10]}...")
-        except Exception as e:
-            print(f"Xatolik ({token[:10]}...): {e}")
+for token in TOKENS:
+    bot = telebot.TeleBot(token, threaded=False)
+    
+    def make_handler(b):
+        def handle_post(message):
+            try:
+                chosen_emoji = random.choice(REACTIONS)
+                b.set_message_reaction(
+                    chat_id=message.chat.id,
+                    message_id=message.message_id,
+                    reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
+                )
+                print(f"Reaksiya ({chosen_emoji}) qo'yildi | Bot: {b.token[:10]}...")
+            except Exception as e:
+                print(f"Xatolik: {e}")
+        return handle_post
 
-    try:
-        # telebot uchun to'g'ri chaqiruv:
+    bot.channel_post_handler(func=lambda msg: True)(make_handler(bot))
+    bots[token] = bot
+
+@app.route("/webhook/<token>", methods=["POST"])
+def receive_update(token):
+    if token in bots:
+        json_string = request.get_data().decode("utf-8")
+        update = telebot.types.Update.de_json(json_string)
+        bots[token].process_new_updates([update])
+        return "OK", 200
+    return "Forbidden", 403
+
+def setup_webhooks():
+    for token, bot in bots.items():
+        webhook_path = f"{WEBHOOK_URL}/webhook/{token}"
         bot.remove_webhook()
-        time.sleep(1)
-        print(f"Bot muvaffaqiyatli ulana oladi: {token[:10]}...")
-        
-        bot.infinity_polling(timeout=20, long_polling_timeout=10)
-    except Exception as e:
-        print(f"Botda qayta ulanish ({token[:10]}...): {e}")
+        bot.set_webhook(url=webhook_path)
+        print(f"Webhook o'rnatildi: {token[:10]}...")
 
 if __name__ == "__main__":
-    threads = []
-    for token in TOKENS:
-        t = Thread(target=run_bot, args=(token,))
-        t.daemon = True
-        t.start()
-        threads.append(t)
-        time.sleep(3)
-
-    print("Barcha bot oqimlari ishga tushirildi.")
-    
-    while True:
-        time.sleep(10)
+    setup_webhooks()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

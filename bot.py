@@ -16,9 +16,9 @@ TOKENS = [
     "8763999740:AAFdmBhIW0gexoqibkHFznANw2ZuEoAFbew",
 ]
 
-REACTIONS = ["❤️", "🔥", "😍", "👏", "💯", "🤩", "🫡", "🚀", "🥰"]
+REACTIONS = ["❤️️", "🔥", "😍", "👏", "💯", "🤩", "🫡", "🚀", "🥰"]
 
-def start_single_bot(token):
+def run_bot(token):
     bot = telebot.TeleBot(token)
 
     @bot.channel_post_handler(func=lambda msg: True)
@@ -30,32 +30,29 @@ def start_single_bot(token):
                 message_id=message.message_id,
                 reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
             )
-            print(f"Reaksiya ({chosen_emoji}) qo'yildi | Bot: {token[:10]}...")
+            print(f"Реакция ({chosen_emoji}) поставлена | Бот: {token[:10]}...")
         except Exception as e:
-            print(f"Xatolik: {e}")
+            print(f"Ошибка: {e}")
 
-    # Eski webhookni tozalash
+    # Сброс зависших сессий
     try:
         bot.remove_webhook()
     except Exception:
         pass
 
-    # Uzilishlar bo'lganda avtomatik qayta ulanuvchi sikl
+    # Бесконечный цикл с заглушкой ошибок конфликта во время перезапуска
     while True:
         try:
-            bot.polling(non_stop=True, interval=1, timeout=30)
+            bot.polling(non_stop=True, interval=2, timeout=20)
         except Exception:
-            time.sleep(3)
+            time.sleep(5)
 
 if __name__ == "__main__":
-    # Har bir botni alohida oqimda ishga tushirish
     for token in TOKENS:
-        t = Thread(target=start_single_bot, args=(token,))
+        t = Thread(target=run_bot, args=(token,))
         t.daemon = True
         t.start()
-        time.sleep(2)  # Telegram serveriga ketma-ket ulanish uchun pauza
+        time.sleep(3) # Пауза 3 сек между запуском каждого бота
 
-    print("Barcha botlar muvaffaqiyatli ishga tushdi.")
-    
     while True:
         time.sleep(10)

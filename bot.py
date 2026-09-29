@@ -4,10 +4,10 @@ import random
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.types import ReactionTypeEmoji
 
-# Yangilangan bot tokeni
-BOT_TOKEN = "8827183894:AAFHaZShqFaRFkZU92iEwlWHTFpOHhLe0NA"
+# Yangi bot tokeni
+BOT_TOKEN = "8841360251:AAHeVgnW8C7p8cYVZBgcIQWK5y20BBjMHYk"
 
-# Bot kanaldagi xabarga ushbu emojilardan tasodifiy 1 tasini qo'yadi:
+# Bot postga ushbu emojilardan TASODIFIY 1 TASINI qo'yadi:
 REACTIONS = ["❤️", "🔥", "👍", "😍"]
 
 logging.basicConfig(level=logging.INFO)
@@ -17,13 +17,13 @@ dp = Dispatcher()
 
 @dp.message(F.text == "/start")
 async def cmd_start(message: types.Message):
-    await message.answer("Bot faol ishlayapti!")
+    await message.answer("Bot faol ishlamoqda!")
 
 
 @dp.channel_post()
 async def auto_react_to_channel_post(message: types.Message):
     try:
-        # Telegram cheklovi sababli 1 ta tasodifiy emoji tanlanadi
+        # Telegram cheklovi sababli ro'yxatdan faqat 1 ta emoji tanlanadi
         chosen_emoji = random.choice(REACTIONS)
 
         await bot.set_message_reaction(
@@ -34,7 +34,7 @@ async def auto_react_to_channel_post(message: types.Message):
         )
         logging.info(f"Reaksiya ({chosen_emoji}) qo'yildi: {message.message_id}")
     except Exception as e:
-        logging.error(f"Reaksiya qo'yishda xatolik yuz berdi: {e}")
+        logging.error(f"Reaksiya qo'yishda xatolik: {e}")
 
 
 async def main():

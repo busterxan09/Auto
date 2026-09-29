@@ -35,13 +35,12 @@ def run_bot(token):
             print(f"Xatolik ({token[:10]}...): {e}")
 
     try:
-        # Telegram serverida osilib qolgan barcha eski sessiya va webhooklarni o'chiramiz
-        bot.remove_webhook(drop_pending_updates=True)
+        # telebot uchun to'g'ri chaqiruv:
+        bot.remove_webhook()
         time.sleep(1)
         print(f"Bot muvaffaqiyatli ulana oladi: {token[:10]}...")
         
-        # Polling xatolarini avtomatik yutib yuboradigan va uzilmaydigan polling
-        bot.infinity_polling(timeout=20, long_polling_timeout=10, restart_on_change=False)
+        bot.infinity_polling(timeout=20, long_polling_timeout=10)
     except Exception as e:
         print(f"Botda qayta ulanish ({token[:10]}...): {e}")
 
@@ -52,10 +51,9 @@ if __name__ == "__main__":
         t.daemon = True
         t.start()
         threads.append(t)
-        time.sleep(3)  # Telegram serveriga bosim qilmaslik uchun 3 soniyadan interval
+        time.sleep(3)
 
     print("Barcha bot oqimlari ishga tushirildi.")
     
-    # Asosiy dasturni tirik ushlab turish
     while True:
         time.sleep(10)

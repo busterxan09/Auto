@@ -18,38 +18,43 @@ TOKENS = [
     "8763999740:AAFdmBhIW0gexoqibkHFznANw2ZuEoAFbew",
 ]
 
-REACTIONS = ["❤️", "🔥", "😍", "👏", "💯", "🤩", "🫡", "🚀", "🥰"]
+REACTIONS = ["👍", "❤️", "🔥", "🥰", "👏", "😁", "🤔", "🤯", "😱", "🎉"]
 
-# Botlarni yaratish
 bots = {token.split(":")[0]: telebot.TeleBot(token) for token in TOKENS}
-
-# Sizning aniq domeningiz:
 WEBHOOK_URL_BASE = "https://worker-production-755e.up.railway.app"
 
 @app.route("/", methods=["GET", "HEAD"])
 def index():
-    return "OK", 200
+    return "Server ishlayapti", 200
 
 @app.route("/webhook/<bot_id>", methods=["POST"])
 def webhook(bot_id):
+    # Telegram so'rov yuborganini darhol logda ko'ramiz
+    print(f"--> Webhook ga so'rov keldi! Bot ID: {bot_id}")
+    
     if bot_id in bots:
         bot = bots[bot_id]
         json_string = request.get_data().decode("utf-8")
         update = telebot.types.Update.de_json(json_string)
         
+        # Post kelganini tekshiramiz
         if update and update.channel_post:
             msg = update.channel_post
+            chosen_emoji = random.choice(REACTIONS)
+            print(f"Kanalda yangi post topildi! Chat ID: {msg.chat.id}, Msg ID: {msg.message_id}")
+            
             try:
-                chosen_emoji = random.choice(REACTIONS)
-                bot.set_message_reaction(
+                res = bot.set_message_reaction(
                     chat_id=msg.chat.id,
                     message_id=msg.message_id,
                     reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
                 )
-                print(f"Reaksiya ({chosen_emoji}) qo'yildi | Bot ID: {bot_id}")
+                print(f"[MUVAFFAQIYAT] Reaksiya ({chosen_emoji}) qo'yildi | Bot: {bot_id} | Natija: {res}")
             except Exception as e:
-                print(f"Reaksiya qo'yishda xatolik: {e}")
-                
+                print(f"[XATOLIK] Reaksiya qo'yishda Telegram xatosi ({bot_id}): {e}")
+        else:
+            print(f"Kelgan update 'channel_post' emas. Type: {type(update)}")
+            
     return "OK", 200
 
 def setup_webhooks():
@@ -59,10 +64,11 @@ def setup_webhooks():
         bot = bots[bot_id]
         try:
             bot.remove_webhook()
-            bot.set_webhook(url=webhook_url)
-            print(f"Webhook o'rnatildi: {bot_id}")
+            # allowed_updates orqali aynan kanal postlarini qabul qilishni belgilaymiz
+            res = bot.set_webhook(url=webhook_url, allowed_updates=["channel_post"])
+            print(f"Webhook o'rnatildi ({bot_id}): {res}")
         except Exception as e:
-            print(f"Webhook xatosi ({bot_id}): {e}")
+            print(f"Webhook o'rnatishda xatolik ({bot_id}): {e}")
 
 if __name__ == "__main__":
     setup_webhooks()

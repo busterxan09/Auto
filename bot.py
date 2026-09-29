@@ -16,7 +16,7 @@ TOKENS = [
     "8763999740:AAFdmBhIW0gexoqibkHFznANw2ZuEoAFbew",
 ]
 
-REACTIONS = ["❤️️", "🔥", "😍", "👏", "💯", "🤩", "🫡", "🚀", "🥰"]
+REACTIONS = ["❤️", "🔥", "😍", "👏", "💯", "🤩", "🫡", "🚀", "🥰"]
 
 def run_bot(token):
     bot = telebot.TeleBot(token)
@@ -34,18 +34,28 @@ def run_bot(token):
         except Exception as e:
             print(f"Xatolik ({token[:10]}...): {e}")
 
-    # Webhook bo'lsa o'chiramiz
-    bot.remove_webhook()
-    print(f"Bot muvaffaqiyatli ishga tushdi: {token[:10]}...")
-    bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    try:
+        # Telegram serverida osilib qolgan barcha eski sessiya va webhooklarni o'chiramiz
+        bot.remove_webhook(drop_pending_updates=True)
+        time.sleep(1)
+        print(f"Bot muvaffaqiyatli ulana oladi: {token[:10]}...")
+        
+        # Polling xatolarini avtomatik yutib yuboradigan va uzilmaydigan polling
+        bot.infinity_polling(timeout=20, long_polling_timeout=10, restart_on_change=False)
+    except Exception as e:
+        print(f"Botda qayta ulanish ({token[:10]}...): {e}")
 
 if __name__ == "__main__":
     threads = []
     for token in TOKENS:
         t = Thread(target=run_bot, args=(token,))
+        t.daemon = True
         t.start()
         threads.append(t)
-        time.sleep(1)  # Botlarni 1 soniyalik pauza bilan yoqish
+        time.sleep(3)  # Telegram serveriga bosim qilmaslik uchun 3 soniyadan interval
 
-    for t in threads:
-        t.join()
+    print("Barcha bot oqimlari ishga tushirildi.")
+    
+    # Asosiy dasturni tirik ushlab turish
+    while True:
+        time.sleep(10)

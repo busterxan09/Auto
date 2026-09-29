@@ -4,7 +4,7 @@ import random
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReactionTypeEmoji
 
-# Barcha 10 ta botingizning tokenlari:
+# Список всех 10 токенов:
 TOKENS = [
     "8841360251:AAHeVgnW8C7p8cYVZBgcIQWK5y20BBjMHYk",
     "8827183894:AAFHaZShqFaRFkZU92iEwlWHTFpOHhLe0NA",
@@ -18,19 +18,16 @@ TOKENS = [
     "8908759051:AAFlkrXBmX9DPfqMgLYwVM6Z7qKWdd0vZts",
 ]
 
-# Yangilangan reaksiyalar ro'yxati (⚡️ olib tashlandi):
+# Обновленный список реакций (без 👍, 🎉 и 🤯):
 REACTIONS = [
     "❤️",
     "🔥",
-    "👍",
     "😍",
-    "🎉",
     "👏",
     "💯",
     "🤩",
     "🫡",
     "🚀",
-    "🤯",
     "🥰",
 ]
 
@@ -53,22 +50,22 @@ async def start_bot(token: str):
                 is_big=False,
             )
             logging.info(
-                f"Reaksiya ({chosen_emoji}) qo'yildi | Bot ID: {token[:10]}..."
+                f"Реакция ({chosen_emoji}) поставлена | Bot ID: {token[:10]}..."
             )
         except Exception as e:
-            logging.error(f"Xatolik yuz berdi ({token[:10]}...): {e}")
+            logging.error(f"Ошибка ({token[:10]}...): {e}")
 
     try:
         await bot.delete_webhook(drop_pending_updates=True)
         me = await bot.get_me()
-        logging.info(f"Bot ishga tushdi: @{me.username}")
+        logging.info(f"Бот запущен: @{me.username}")
         await dp.start_polling(bot)
     except Exception as e:
-        logging.error(f"Botni ishga tushirishda xatolik ({token[:10]}...): {e}")
+        logging.error(f"Ошибка запуска бота ({token[:10]}...): {e}")
 
 
 async def main():
-    # 10 ta botni parallel ishga tushirish
+    # Параллельный запуск 10 ботов
     tasks = [start_bot(token) for token in TOKENS]
     await asyncio.gather(*tasks)
 

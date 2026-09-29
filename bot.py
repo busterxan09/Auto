@@ -4,21 +4,21 @@ import random
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReactionTypeEmoji
 
-# Barcha 10 ta bot tokenlari:
+# Yangilangan 10 ta bot tokenlari:
 TOKENS = [
-    "8841360251:AAHeVgnW8C7p8cYVZBgcIQWK5y20BBjMHYk",
-    "8827183894:AAFHaZShqFaRFkZU92iEwlWHTFpOHhLe0NA",
-    "8518942139:AAH_ogn6a5M5SMaSv-J67fn4-U_VELjDzok",
-    "8901459374:AAGwK2QVsS96_V7-hbIM3CF0bPgu1v2u27I",
-    "8969735951:AAE8opS3yf7HqKKT41VJYe-wgj_ifsu0apE",
-    "8752915627:AAFdwkzXKDlRbaqz5WRdQYuYPsAanLZ4ZeE",
-    "8711233720:AAHB7ybdObUp4Jyvx1nugu4mkfvgPlgYhYQ",
-    "8541715719:AAGsO2TxnCrcP5EuZXqzWwvCz6Bsk8GT-ms",
-    "8763999740:AAGAGsXighP53b-RyBS3kyz5LTjhxblUr_I",
-    "8908759051:AAFlkrXBmX9DPfqMgLYwVM6Z7qKWdd0vZts",
+    "8518942139:AAFSbCQ7QR3q5bBZIa7M9lVJTk23L7N7KrA",
+    "8827183894:AAEhPJdrjavzfAAYiqs3nre4To5Uj3OZO_M",
+    "8969735951:AAFyhvumyXv03gvw1o4r4U_47NVTeYnQOiI",
+    "8841360251:AAFK8jWz2n5hKYCHuMCwyNjKP8I-_CMSorg",
+    "8901459374:AAHrOyvDaURbeJrjR_QD6KqjsplBYbF939w",
+    "8752915627:AAF6i0I5QpQ5SpUpvQfVZMBDaz_7bzOTDLs",
+    "8711233720:AAGcVlIgiB1jGzi9R41adumyN6cbd1CllPU",
+    "8908759051:AAH_rhdUcfLs-lA2jDJaCLpQHbYxQR11W3A",
+    "8541715719:AAGNhI-MPy5u2a0QRY7pB4MuPdvCG2pSVdw",
+    "8763999740:AAFdmBhIW0gexoqibkHFznANw2ZuEoAFbew",
 ]
 
-# Reaksiyalar ro'yxati:
+# Tanlangan reaksiyalar ro'yxati:
 REACTIONS = [
     "❤️",
     "🔥",
@@ -55,7 +55,6 @@ async def start_bot(token: str):
         except Exception as e:
             logging.error(f"Xatolik yuz berdi ({token[:10]}...): {e}")
 
-    # Ziddiyatlarni va eski ulanishlarni avtomatik hal qilish logikasi
     while True:
         try:
             await bot.delete_webhook(drop_pending_updates=True)
@@ -68,7 +67,7 @@ async def start_bot(token: str):
             break
         except Exception as e:
             logging.error(
-                f"Ulanishda ziddiyat ({token[:10]}...): {e}. 10 soniyadan so'ng qayta ulanadi..."
+                f"Ulanishda xatolik ({token[:10]}...): {e}. 10 soniyadan so'ng qayta ulanadi..."
             )
             await asyncio.sleep(10)
 
@@ -80,3 +79,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+

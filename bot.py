@@ -55,22 +55,21 @@ async def start_bot(token: str):
         except Exception as e:
             logging.error(f"Xatolik yuz berdi ({token[:10]}...): {e}")
 
-    # Eski sessiyalarni va ulanishlarni to'liq tozalash
+    # Ziddiyatlarni va eski ulanishlarni avtomatik hal qilish logikasi
     while True:
         try:
             await bot.delete_webhook(drop_pending_updates=True)
             me = await bot.get_me()
             logging.info(f"Bot muvaffaqiyatli ishga tushdi: @{me.username}")
-            
-            # Faqat channel_post hodisalarini qabul qilish
+
             await dp.start_polling(
-                bot, 
-                allowed_updates=["channel_post"],
-                handle_signals=False
+                bot, allowed_updates=["channel_post"], handle_signals=False
             )
             break
         except Exception as e:
-            logging.error(f"Ulanishda ziddiyat/xatolik ({token[:10]}...): {e}. 10 soniyadan so'ng qayta uriniladi...")
+            logging.error(
+                f"Ulanishda ziddiyat ({token[:10]}...): {e}. 10 soniyadan so'ng qayta ulanadi..."
+            )
             await asyncio.sleep(10)
 
 

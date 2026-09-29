@@ -30,33 +30,32 @@ def start_single_bot(token):
                 message_id=message.message_id,
                 reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
             )
-            print(f"Реакция ({chosen_emoji}) поставлена | Бот: {token[:10]}...")
+            print(f"Reaksiya ({chosen_emoji}) qo'yildi | Bot: {token[:10]}...")
         except Exception as e:
-            print(f"Ошибка: {e}")
+            print(f"Xatolik: {e}")
 
-    # Сбрасываем старый вебхук, чтобы не было конфликтов
+    # Eski webhookni tozalash
     try:
         bot.remove_webhook()
     except Exception:
         pass
 
-    # Бесконечный цикл с переподключением при любых ошибках сети
+    # Uzilishlar bo'lganda avtomatik qayta ulanuvchi sikl
     while True:
         try:
             bot.polling(non_stop=True, interval=1, timeout=30)
-        except Exception as e:
+        except Exception:
             time.sleep(3)
 
 if __name__ == "__main__":
-    # Запускаем каждого бота в отдельном независимом потоке
+    # Har bir botni alohida oqimda ishga tushirish
     for token in TOKENS:
         t = Thread(target=start_single_bot, args=(token,))
         t.daemon = True
         t.start()
-        time.sleep(2) # Задержка запуска, чтобы Telegram не блокировал сессии
+        time.sleep(2)  # Telegram serveriga ketma-ket ulanish uchun pauza
 
-    print("Все боты запущены в режиме Polling.")
+    print("Barcha botlar muvaffaqiyatli ishga tushdi.")
     
-    # Главный цикл удерживает процесс активным
     while True:
         time.sleep(10)

@@ -4,7 +4,7 @@ import random
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReactionTypeEmoji
 
-# Список всех 10 токенов:
+# Barcha 10 ta bot tokenlari:
 TOKENS = [
     "8841360251:AAHeVgnW8C7p8cYVZBgcIQWK5y20BBjMHYk",
     "8827183894:AAFHaZShqFaRFkZU92iEwlWHTFpOHhLe0NA",
@@ -18,7 +18,7 @@ TOKENS = [
     "8908759051:AAFlkrXBmX9DPfqMgLYwVM6Z7qKWdd0vZts",
 ]
 
-# Обновленный список реакций (без 👍,ggg 🎉 и 🤯):
+# Reaksiyalar ro'yxati:
 REACTIONS = [
     "❤️",
     "🔥",
@@ -50,22 +50,31 @@ async def start_bot(token: str):
                 is_big=False,
             )
             logging.info(
-                f"Реакция ({chosen_emoji}) поставлена | Bot ID: {token[:10]}..."
+                f"Reaksiya ({chosen_emoji}) qo'yildi | Bot ID: {token[:10]}..."
             )
         except Exception as e:
-            logging.error(f"Ошибка ({token[:10]}...): {e}")
+            logging.error(f"Xatolik yuz berdi ({token[:10]}...): {e}")
 
-    try:
-        await bot.delete_webhook(drop_pending_updates=True)
-        me = await bot.get_me()
-        logging.info(f"Бот запущен: @{me.username}")
-        await dp.start_polling(bot)
-    except Exception as e:
-        logging.error(f"Ошибка запуска бота ({token[:10]}...): {e}")
+    # Eski sessiyalarni va ulanishlarni to'liq tozalash
+    while True:
+        try:
+            await bot.delete_webhook(drop_pending_updates=True)
+            me = await bot.get_me()
+            logging.info(f"Bot muvaffaqiyatli ishga tushdi: @{me.username}")
+            
+            # Faqat channel_post hodisalarini qabul qilish
+            await dp.start_polling(
+                bot, 
+                allowed_updates=["channel_post"],
+                handle_signals=False
+            )
+            break
+        except Exception as e:
+            logging.error(f"Ulanishda ziddiyat/xatolik ({token[:10]}...): {e}. 10 soniyadan so'ng qayta uriniladi...")
+            await asyncio.sleep(10)
 
 
 async def main():
-    # Параллельный запуск 10 ботов
     tasks = [start_bot(token) for token in TOKENS]
     await asyncio.gather(*tasks)
 

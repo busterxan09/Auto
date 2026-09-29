@@ -1,11 +1,7 @@
-import os
-import random
 import telebot
-from flask import Flask, request
-
-# Railway taqdim etgan domen (oxiridagi / belgisisiz):
-WEBHOOK_URL = "https://worker-production-755e.up.railway.app"
-
+import random
+import time
+from threading import Thread
 
 TOKENS = [
     "8518942139:AAFSbCQ7QR3q5bBZIa7M9lVJTk23L7N7KrA",
@@ -22,47 +18,45 @@ TOKENS = [
 
 REACTIONS = ["❤️", "🔥", "😍", "👏", "💯", "🤩", "🫡", "🚀", "🥰"]
 
-app = Flask(__name__)
-bots = {}
+def start_single_bot(token):
+    bot = telebot.TeleBot(token)
 
-for token in TOKENS:
-    bot = telebot.TeleBot(token, threaded=False)
-    
-    def make_handler(b):
-        def handle_post(message):
-            try:
-                chosen_emoji = random.choice(REACTIONS)
-                b.set_message_reaction(
-                    chat_id=message.chat.id,
-                    message_id=message.message_id,
-                    reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
-                )
-                print(f"Reaksiya ({chosen_emoji}) qo'yildi | Bot: {b.token[:10]}...")
-            except Exception as e:
-                print(f"Xatolik: {e}")
-        return handle_post
+    @bot.channel_post_handler(func=lambda msg: True)
+    def handle_post(message):
+        try:
+            chosen_emoji = random.choice(REACTIONS)
+            bot.set_message_reaction(
+                chat_id=message.chat.id,
+                message_id=message.message_id,
+                reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
+            )
+            print(f"Реакция ({chosen_emoji}) поставлена | Бот: {token[:10]}...")
+        except Exception as e:
+            print(f"Ошибка: {e}")
 
-    bot.channel_post_handler(func=lambda msg: True)(make_handler(bot))
-    bots[token] = bot
-
-@app.route("/webhook/<token>", methods=["POST"])
-def receive_update(token):
-    if token in bots:
-        json_string = request.get_data().decode("utf-8")
-        update = telebot.types.Update.de_json(json_string)
-        bots[token].process_new_updates([update])
-        return "OK", 200
-    return "Forbidden", 403
-
-def setup_webhooks():
-    for token, bot in bots.items():
-        webhook_path = f"{WEBHOOK_URL}/webhook/{token}"
+    # Сбрасываем старый вебхук, чтобы не было конфликтов
+    try:
         bot.remove_webhook()
-        bot.set_webhook(url=webhook_path)
-        print(f"Webhook o'rnatildi: {token[:10]}...")
+    except Exception:
+        pass
+
+    # Бесконечный цикл с переподключением при любых ошибках сети
+    while True:
+        try:
+            bot.polling(non_stop=True, interval=1, timeout=30)
+        except Exception as e:
+            time.sleep(3)
 
 if __name__ == "__main__":
-    setup_webhooks()
-    port = int(os.environ.get("PORT", 8080))
+    # Запускаем каждого бота в отдельном независимом потоке
+    for token in TOKENS:
+        t = Thread(target=start_single_bot, args=(token,))
+        t.daemon = True
+        t.start()
+        time.sleep(2) # Задержка запуска, чтобы Telegram не блокировал сессии
 
-    app.run(host="0.0.0.0", port=port)
+    print("Все боты запущены в режиме Polling.")
+    
+    # Главный цикл удерживает процесс активным
+    while True:
+        time.sleep(10)

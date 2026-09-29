@@ -20,11 +20,11 @@ TOKENS = [
 
 REACTIONS = ["❤️", "🔥", "😍", "👏", "💯", "🤩", "🫡", "🚀", "🥰"]
 
-# Создаем объекты ботов
+# Botlarni yaratish
 bots = {token.split(":")[0]: telebot.TeleBot(token) for token in TOKENS}
 
-# Указываем публичный адрес вашего сервиса на Railway (без слэша в конце)
-WEBHOOK_URL_BASE = "https://worker-production-82e1.up.railway.app"
+# Sizning aniq domeningiz:
+WEBHOOK_URL_BASE = "https://worker-production-755e.up.railway.app"
 
 @app.route("/", methods=["GET", "HEAD"])
 def index():
@@ -46,9 +46,9 @@ def webhook(bot_id):
                     message_id=msg.message_id,
                     reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
                 )
-                print(f"Реакция ({chosen_emoji}) поставлена ботом ID: {bot_id}")
+                print(f"Reaksiya ({chosen_emoji}) qo'yildi | Bot ID: {bot_id}")
             except Exception as e:
-                print(f"Ошибка при простановке реакции: {e}")
+                print(f"Reaksiya qo'yishda xatolik: {e}")
                 
     return "OK", 200
 
@@ -60,9 +60,9 @@ def setup_webhooks():
         try:
             bot.remove_webhook()
             bot.set_webhook(url=webhook_url)
-            print(f"Webhook успешно установлен для {bot_id}")
+            print(f"Webhook o'rnatildi: {bot_id}")
         except Exception as e:
-            print(f"Ошибка установки Webhook для {bot_id}: {e}")
+            print(f"Webhook xatosi ({bot_id}): {e}")
 
 if __name__ == "__main__":
     setup_webhooks()

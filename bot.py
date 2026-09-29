@@ -16,7 +16,7 @@ TOKENS = [
     "8763999740:AAFdmBhIW0gexoqibkHFznANw2ZuEoAFbew",
 ]
 
-REACTIONS = ["👍", "❤️", "🔥", "🥰", "👏", "😁", "🤩", "🫡", "🚀", "🎉"]
+REACTIONS = ["👍", "❤️", "🔥", "🥰", "👏", "😁", "🤩",  "🚀", "🎉"]
 
 # Barcha bot obyektlarini yaratib olamiz
 bot_instances = [telebot.TeleBot(token) for token in TOKENS]

@@ -1,7 +1,9 @@
-import telebot
+import os
 import random
-import time
-from threading import Thread
+from flask import Flask, request
+import telebot
+
+app = Flask(__name__)
 
 TOKENS = [
     "8518942139:AAFSbCQ7QR3q5bBZIa7M9lVJTk23L7N7KrA",
@@ -16,43 +18,53 @@ TOKENS = [
     "8763999740:AAFdmBhIW0gexoqibkHFznANw2ZuEoAFbew",
 ]
 
-REACTIONS = ["❤️️", "🔥", "😍", "👏", "💯", "🤩", "🫡", "🚀", "🥰"]
+REACTIONS = ["❤️", "🔥", "😍", "👏", "💯", "🤩", "🫡", "🚀", "🥰"]
 
-def run_bot(token):
-    bot = telebot.TeleBot(token)
+# Создаем объекты ботов
+bots = {token.split(":")[0]: telebot.TeleBot(token) for token in TOKENS}
 
-    @bot.channel_post_handler(func=lambda msg: True)
-    def handle_post(message):
+# Указываем публичный адрес вашего сервиса на Railway (без слэша в конце)
+WEBHOOK_URL_BASE = "https://worker-production-82e1.up.railway.app"
+
+@app.route("/", methods=["GET", "HEAD"])
+def index():
+    return "OK", 200
+
+@app.route("/webhook/<bot_id>", methods=["POST"])
+def webhook(bot_id):
+    if bot_id in bots:
+        bot = bots[bot_id]
+        json_string = request.get_data().decode("utf-8")
+        update = telebot.types.Update.de_json(json_string)
+        
+        if update and update.channel_post:
+            msg = update.channel_post
+            try:
+                chosen_emoji = random.choice(REACTIONS)
+                bot.set_message_reaction(
+                    chat_id=msg.chat.id,
+                    message_id=msg.message_id,
+                    reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
+                )
+                print(f"Реакция ({chosen_emoji}) поставлена ботом ID: {bot_id}")
+            except Exception as e:
+                print(f"Ошибка при простановке реакции: {e}")
+                
+    return "OK", 200
+
+def setup_webhooks():
+    for token in TOKENS:
+        bot_id = token.split(":")[0]
+        webhook_url = f"{WEBHOOK_URL_BASE}/webhook/{bot_id}"
+        bot = bots[bot_id]
         try:
-            chosen_emoji = random.choice(REACTIONS)
-            bot.set_message_reaction(
-                chat_id=message.chat.id,
-                message_id=message.message_id,
-                reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
-            )
-            print(f"Реакция ({chosen_emoji}) поставлена | Бот: {token[:10]}...")
+            bot.remove_webhook()
+            bot.set_webhook(url=webhook_url)
+            print(f"Webhook успешно установлен для {bot_id}")
         except Exception as e:
-            print(f"Ошибка: {e}")
-
-    # Сброс зависших сессий
-    try:
-        bot.remove_webhook()
-    except Exception:
-        pass
-
-    # Бесконечный цикл с заглушкой ошибок конфликта во время перезапуска
-    while True:
-        try:
-            bot.polling(non_stop=True, interval=2, timeout=20)
-        except Exception:
-            time.sleep(5)
+            print(f"Ошибка установки Webhook для {bot_id}: {e}")
 
 if __name__ == "__main__":
-    for token in TOKENS:
-        t = Thread(target=run_bot, args=(token,))
-        t.daemon = True
-        t.start()
-        time.sleep(3) # Пауза 3 сек между запуском каждого бота
-
-    while True:
-        time.sleep(10)
+    setup_webhooks()
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)

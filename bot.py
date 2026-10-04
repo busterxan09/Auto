@@ -2,9 +2,8 @@ import time
 import random
 import telebot
 
-# 10 токенов ботов (первый токен обновлен)
 TOKENS = [
-    "8518942139:AAFkLFcAfX7h0AkWjwvSp6Nq1rYgK9NaRcc",  # Обновленный главный бот
+    "8518942139:AAFkLFcAfX7h0AkWjwvSp6Nq1rYgK9NaRcc",  # Yangilangan 1-bot
     "8827183894:AAEhPJdrjavzfAAYiqs3nre4To5Uj3OZO_M",
     "8969735951:AAFyhvumyXv03gvw1o4r4U_47NVTeYnQOiI",
     "8841360251:AAFK8jWz2n5hKYCHuMCwyNjKP8I-_CMSorg",
@@ -16,20 +15,15 @@ TOKENS = [
     "8763999740:AAFdmBhIW0gexoqibkHFznANw2ZuEoAFbew",
 ]
 
-# Список из 8 реакций
 REACTIONS = ["👍", "❤️", "🔥", "🥰", "👏", "😁", "🤩", "🚀"]
 
-# Создаем объекты для всех ботов без использования потоков telebot
 bot_instances = [telebot.TeleBot(token, threaded=False) for token in TOKENS]
-
-# Главный бот слушает обновления
 main_bot = bot_instances[0]
 
 @main_bot.channel_post_handler(func=lambda msg: True)
 def handle_channel_post(message):
-    print(f"\n[НОВЫЙ ПОСТ] ID: {message.message_id}")
+    print(f"\n[YANGI POST] ID: {message.message_id}")
     
-    # Все 10 ботов ставят реакции по очереди
     for i, bot_obj in enumerate(bot_instances, start=1):
         try:
             chosen_emoji = random.choice(REACTIONS)
@@ -38,25 +32,32 @@ def handle_channel_post(message):
                 message_id=message.message_id,
                 reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
             )
-            print(f"--> [{i}/10] Реакция поставлена: {chosen_emoji}")
+            print(f"--> [{i}/10] Reaksiya qo'yildi: {chosen_emoji}")
             time.sleep(0.3)
         except Exception as e:
-            print(f"--> [{i}/10] Ошибка реакции: {e}")
+            print(f"--> [{i}/10] Xatolik: {e}")
 
 if __name__ == "__main__":
-    print("Очистка старых вебхуков...")
+    print("Eski seanslar tozalanyapti...")
+    
+    # Telegram API'dan eski barcha ulanishlarni uzish:
+    try:
+        main_bot.log_out()
+    except Exception:
+        pass
+
     for b in bot_instances:
         try:
             b.remove_webhook()
         except Exception:
             pass
-    
-    time.sleep(2)
-    print("Все боты готовы. Канал прослушивается...")
+            
+    time.sleep(3)
+    print("Barcha botlar tayyor. Kanal kuzatish boshlandi...")
 
     while True:
         try:
-            main_bot.polling(non_stop=True, interval=2, timeout=20, skip_pending=True)
+            main_bot.polling(non_stop=True, interval=3, timeout=30, skip_pending=True)
         except Exception as e:
-            print(f"Сбой подключения, повтор: {e}")
-            time.sleep(5)
+            print(f"Qayta ulanish: {e}")
+            time.sleep(10)

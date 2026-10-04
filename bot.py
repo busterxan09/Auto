@@ -2,9 +2,9 @@ import time
 import random
 import telebot
 
-# 10 ta bot tokenlari
+# 10 токенов ботов (первый токен обновлен)
 TOKENS = [
-    "8518942139:AAFSbCQ7QR3q5bBZIa7M9lVJTk23L7N7KrA",  # Asosiy kuzatuvchi bot
+    "8518942139:AAFkLFcAfX7h0AkWjwvSp6Nq1rYgK9NaRcc",  # Обновленный главный бот
     "8827183894:AAEhPJdrjavzfAAYiqs3nre4To5Uj3OZO_M",
     "8969735951:AAFyhvumyXv03gvw1o4r4U_47NVTeYnQOiI",
     "8841360251:AAFK8jWz2n5hKYCHuMCwyNjKP8I-_CMSorg",
@@ -16,28 +16,20 @@ TOKENS = [
     "8763999740:AAFdmBhIW0gexoqibkHFznANw2ZuEoAFbew",
 ]
 
-REACTIONS = ["👍", "❤️", "🔥", "🥰", "👏", "😁", "🤩",  "🚀", "🎉"]
+# Список из 8 реакций
+REACTIONS = ["👍", "❤️", "🔥", "🥰", "👏", "😁", "🤩", "🚀"]
 
-# Barcha bot obyektlarini yaratib olamiz
-bot_instances = [telebot.TeleBot(token) for token in TOKENS]
+# Создаем объекты для всех ботов без использования потоков telebot
+bot_instances = [telebot.TeleBot(token, threaded=False) for token in TOKENS]
 
-# Faqat 1-bot kanaldagi yangi postlarni eshitadi (Conflict 409 xatosi umuman bo'lmaydi!)
+# Главный бот слушает обновления
 main_bot = bot_instances[0]
-
-# Har bir botdan keladigan webhooklarni tozalaymiz
-for b in bot_instances:
-    try:
-        b.remove_webhook()
-    except Exception:
-        pass
-
-print("Barcha botlar tayyorlandi. Kanal kuzatilmoqda...")
 
 @main_bot.channel_post_handler(func=lambda msg: True)
 def handle_channel_post(message):
-    print(f"\n[YANGI POST DETEKT QILINDI] ID: {message.message_id}")
+    print(f"\n[НОВЫЙ ПОСТ] ID: {message.message_id}")
     
-    # 10 ta botning har biri navbat bilan reaksiya bosadi
+    # Все 10 ботов ставят реакции по очереди
     for i, bot_obj in enumerate(bot_instances, start=1):
         try:
             chosen_emoji = random.choice(REACTIONS)
@@ -46,16 +38,25 @@ def handle_channel_post(message):
                 message_id=message.message_id,
                 reaction=[telebot.types.ReactionTypeEmoji(chosen_emoji)]
             )
-            print(f"--> [{i}/10] Bot reaksiya qo'ydi: {chosen_emoji}")
-            time.sleep(0.3) # Telegram API flood-limitga tushmasligi uchun kichik pauza
+            print(f"--> [{i}/10] Реакция поставлена: {chosen_emoji}")
+            time.sleep(0.3)
         except Exception as e:
-            print(f"--> [{i}/10] Bot reaksiyasida xatolik: {e}")
+            print(f"--> [{i}/10] Ошибка реакции: {e}")
 
 if __name__ == "__main__":
+    print("Очистка старых вебхуков...")
+    for b in bot_instances:
+        try:
+            b.remove_webhook()
+        except Exception:
+            pass
+    
+    time.sleep(2)
+    print("Все боты готовы. Канал прослушивается...")
+
     while True:
         try:
-            # Faqat 1 ta bot Telegram bilan bog'lanadi va postlarni ushlaydi
-            main_bot.polling(non_stop=True, interval=2, timeout=20)
+            main_bot.polling(non_stop=True, interval=2, timeout=20, skip_pending=True)
         except Exception as e:
-            print(f"Ulanishda uzilish: {e}")
+            print(f"Сбой подключения, повтор: {e}")
             time.sleep(5)

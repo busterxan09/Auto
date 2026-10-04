@@ -2,8 +2,9 @@ import time
 import random
 import telebot
 
+# 10 ta bot tokeni (1-bot yangi token bilan almashtirildi)
 TOKENS = [
-    "8518942139:AAFkLFcAfX7h0AkWjwvSp6Nq1rYgK9NaRcc",  # Yangilangan 1-bot
+    "8518942139:AAEL4Orw2MYvKrQsuVY53s8a0dAPhMOXVMI",  # Yangi asosiy bot tokeni
     "8827183894:AAEhPJdrjavzfAAYiqs3nre4To5Uj3OZO_M",
     "8969735951:AAFyhvumyXv03gvw1o4r4U_47NVTeYnQOiI",
     "8841360251:AAFK8jWz2n5hKYCHuMCwyNjKP8I-_CMSorg",
@@ -15,7 +16,7 @@ TOKENS = [
     "8763999740:AAFdmBhIW0gexoqibkHFznANw2ZuEoAFbew",
 ]
 
-
+# Siz tanlagan 8 ta emoji:
 REACTIONS = ["👍", "❤️", "🔥", "🥰", "👏", "😁", "🤩", "🚀"]
 
 bot_instances = [telebot.TeleBot(token, threaded=False) for token in TOKENS]
@@ -39,26 +40,20 @@ def handle_channel_post(message):
             print(f"--> [{i}/10] Xatolik: {e}")
 
 if __name__ == "__main__":
-    print("Eski seanslar tozalanyapti...")
+    print("Eski seanslar va webhooklar tozalanmoqda...")
     
-    # Telegram API'dan eski barcha ulanishlarni uzish:
-    try:
-        main_bot.log_out()
-    except Exception:
-        pass
-
     for b in bot_instances:
         try:
             b.remove_webhook()
         except Exception:
             pass
             
-    time.sleep(3)
-    print("Barcha botlar tayyor. Kanal kuzatish boshlandi...")
+    time.sleep(2)
+    print("Barcha botlar tayyor. Kanal kuzatilmoqda...")
 
     while True:
         try:
-            main_bot.polling(non_stop=True, interval=3, timeout=30, skip_pending=True)
+            main_bot.polling(non_stop=True, interval=2, timeout=20, skip_pending=True)
         except Exception as e:
-            print(f"Qayta ulanish: {e}")
-            time.sleep(10)
+            print(f"Qayta ulanish kutilmoqda: {e}")
+            time.sleep(5)

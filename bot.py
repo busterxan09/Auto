@@ -2,9 +2,8 @@ import time
 import random
 import telebot
 
-# 10 ta bot tokeni (1-bot yangi token bilan almashtirildi)
 TOKENS = [
-    "8518942139:AAEL4Orw2MYvKrQsuVY53s8a0dAPhMOXVMI",  # Yangi asosiy bot tokeni
+    "8518942139:AAEL4Orw2MYvKrQsuVY53s8a0dAPhMOXVMI",
     "8827183894:AAEhPJdrjavzfAAYiqs3nre4To5Uj3OZO_M",
     "8969735951:AAFyhvumyXv03gvw1o4r4U_47NVTeYnQOiI",
     "8841360251:AAFK8jWz2n5hKYCHuMCwyNjKP8I-_CMSorg",
@@ -16,7 +15,6 @@ TOKENS = [
     "8763999740:AAFdmBhIW0gexoqibkHFznANw2ZuEoAFbew",
 ]
 
-# Siz tanlagan 8 ta emoji:
 REACTIONS = ["👍", "❤️", "🔥", "🥰", "👏", "😁", "🤩", "🚀"]
 
 bot_instances = [telebot.TeleBot(token, threaded=False) for token in TOKENS]
@@ -48,12 +46,14 @@ if __name__ == "__main__":
         except Exception:
             pass
             
-    time.sleep(2)
+    time.sleep(5)
     print("Barcha botlar tayyor. Kanal kuzatilmoqda...")
 
     while True:
         try:
-            main_bot.polling(non_stop=True, interval=2, timeout=20, skip_pending=True)
+            # interval=3 va timeout=30 xatoliklarning vaqtincha to'qnashuvini kamaytiradi
+            main_bot.polling(non_stop=True, interval=3, timeout=30, skip_pending=True)
         except Exception as e:
             print(f"Qayta ulanish kutilmoqda: {e}")
-            time.sleep(5)
+            time.sleep(10)
+

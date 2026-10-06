@@ -17,7 +17,23 @@ BOT_REACTIONS = [
     {"token": "8763999740:AAHYKvyfv1ypC5rDZ_F9VulFa9GMqJauYZw", "emoji": "😍"}
 ]
 
-# Bir dona bot orqali reaksiya yuborish
+# 1. Railway uchun Web Server (Health Check)
+async def handle_health(request):
+    return web.Response(text="Botlar faol rejimda!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get("/", handle_health)
+    app.router.add_get("/health", handle_health)
+    
+    port = int(os.environ.get("PORT", 8080))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"Railway Web Server {port}-portda faollashtirildi.")
+
+# 2. Reaksiya yuborish funksiyalari
 async def send_single_reaction(session, token, chat_id, message_id, emoji):
     url = f"https://api.telegram.org/bot{token}/setMessageReaction"
     payload = {
@@ -33,9 +49,8 @@ async def send_single_reaction(session, token, chat_id, message_id, emoji):
             else:
                 print(f"Xatolik ({token[:10]}...): {res.get('description')}")
     except Exception as e:
-        print(f"Xato ({token[:10]}...): {e}")
+        print(f"Ulanishda xato ({token[:10]}...): {e}")
 
-# Barcha 11 bot bir vaqtda reaksiya yuboradi
 async def trigger_all_reactions(session, chat_id, message_id):
     print(f"Yangi post aniqlandi ({message_id}). Barcha botlar reaksiya bosmoqda...")
     tasks = [
@@ -44,7 +59,7 @@ async def trigger_all_reactions(session, chat_id, message_id):
     ]
     await asyncio.gather(*tasks)
 
-# Asosiy kuzatuvchi (Master Bot)
+# 3. Master bot kuzatuvi
 async def master_listener(session):
     master_token = BOT_REACTIONS[0]["token"]
     offset = 0
@@ -70,6 +85,9 @@ async def master_listener(session):
         await asyncio.sleep(0.5)
 
 async def main():
+    # Railway o'chib qolmasligi uchun Web serverni parallel ishga tushirish
+    await start_web_server()
+    
     timeout = aiohttp.ClientTimeout(total=35)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         await master_listener(session)
@@ -79,6 +97,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         pass
+
 
 
 

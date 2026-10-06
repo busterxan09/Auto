@@ -3,6 +3,9 @@ import os
 import aiohttp
 from aiohttp import web
 
+# Railway domeningiz
+DOMAIN = "worker-production-a852.up.railway.app"
+
 BOT_REACTIONS = [
     {"token": "8873673862:AAHkh6-SnfK7MGqr7xuEegxcBE0jlvCiJQE", "emoji": "👍"},
     {"token": "8957810259:AAGDbR19Q-6LCFL_dGEhH9gnLD3an0ndnF0", "emoji": "❤️"},
@@ -17,9 +20,7 @@ BOT_REACTIONS = [
     {"token": "8763999740:AAHYKvyfv1ypC5rDZ_F9VulFa9GMqJauYZw", "emoji": "😍"}
 ]
 
-async def handle_health(request):
-    return web.Response(text="OK", status=200)
-
+# Reaksiya bosish funksiyasi
 async def send_single_reaction(session, token, chat_id, message_id, emoji):
     url = f"https://api.telegram.org/bot{token}/setMessageReaction"
     payload = {
@@ -31,67 +32,44 @@ async def send_single_reaction(session, token, chat_id, message_id, emoji):
         async with session.post(url, json=payload, timeout=10) as resp:
             res = await resp.json()
             if res.get("ok"):
-                print(f"[{emoji}] Reaksiya bosildi! Bot: {token[:10]}...")
+                print(f"[{emoji}] Reaksiya muvaffaqiyatli qo'yildi! Bot: {token[:10]}...")
             else:
-                print(f"Xatolik ({token[:10]}...): {res.get('description')}")
+                print(f"Reaksiya xatosi ({token[:10]}...): {res.get('description')}")
     except Exception as e:
-        print(f"Ulanishda xato ({token[:10]}...): {e}")
+        print(f"Ulanishda xatolik ({token[:10]}...): {e}")
 
-async def trigger_all_reactions(session, chat_id, message_id):
-    print(f"Yangi post aniqlandi ({message_id}). Barcha botlar reaksiya bosmoqda...")
-    tasks = [
-        send_single_reaction(session, bot["token"], chat_id, message_id, bot["emoji"])
-        for bot in BOT_REACTIONS
-    ]
-    await asyncio.gather(*tasks)
+# Webhook orqali yangi postlarni qabul qilish
+async def handle_webhook(request):
+    try:
+        data = await request.json()
+        if "channel_post" in data:
+            post = data["channel_post"]
+            chat_id = post["chat"]["id"]
+            message_id = post["message_id"]
+            
+            print(f"Yangi post qabul qilindi! Post ID: {message_id}, Chat ID: {chat_id}")
+            
+            async with aiohttp.ClientSession() as session:
+                tasks = [
+                    send_single_reaction(session, bot["token"], chat_id, message_id, bot["emoji"])
+                    for bot in BOT_REACTIONS
+                ]
+                await asyncio.gather(*tasks)
+    except Exception as e:
+        print(f"Webhook ishlov berishda xato: {e}")
+        
+    return web.Response(text="OK", status=200)
 
-async def master_listener(session):
+async def handle_health(request):
+    return web.Response(text="Botlar faol rejimda!", status=200)
+
+# Telegram Webhook o'rnatish
+async def setup_webhook(app):
     master_token = BOT_REACTIONS[0]["token"]
-    offset = 0
-    print("Master bot kanaldagi yangi postlarni kuzatishni boshladi...")
-
-    while True:
-        url = f"https://api.telegram.org/bot{master_token}/getUpdates"
-        params = {"offset": offset, "timeout": 20, "allowed_updates": ["channel_post"]}
-        try:
-            async with session.get(url, params=params, timeout=30) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    for update in data.get("result", []):
-                        offset = update["update_id"] + 1
-                        if "channel_post" in update:
-                            post = update["channel_post"]
-                            chat_id = post["chat"]["id"]
-                            message_id = post["message_id"]
-                            await trigger_all_reactions(session, chat_id, message_id)
-        except Exception:
-            await asyncio.sleep(2)
-
-        await asyncio.sleep(0.5)
-
-async def start_background_tasks(app):
-    timeout = aiohttp.ClientTimeout(total=35)
-    session = aiohttp.ClientSession(timeout=timeout)
-    app['client_session'] = session
-    app['bot_task'] = asyncio.create_task(master_listener(session))
-
-async def cleanup_background_tasks(app):
-    app['bot_task'].cancel()
-    await app['client_session'].close()
-
-def main():
-    app = web.Application()
-    app.router.add_get("/", handle_health)
-    app.router.add_get("/health", handle_health)
+    webhook_url = f"https://{DOMAIN}/webhook"
     
-    app.on_startup.append(start_background_tasks)
-    app.on_cleanup.append(cleanup_background_tasks)
+    url = f"
 
-    port = int(os.environ.get("PORT", 8080))
-    web.run_app(app, host="0.0.0.0", port=port)
-
-if __name__ == "__main__":
-    main()
 
 
 

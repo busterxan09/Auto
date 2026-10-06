@@ -7,7 +7,7 @@ DOMAIN = "worker-production-a852.up.railway.app"
 
 BOT_REACTIONS = [
     {"token": "8873673862:AAHkh6-SnfK7MGqr7xuEegxcBE0jlvCiJQE", "emoji": "👍"},
-    {"token": "8957810259:AAGDbR19Q-6LCFL_dGEhH9gnLD3an0ndnF0", "emoji": "❤️️"},
+    {"token": "8957810259:AAGDbR19Q-6LCFL_dGEhH9gnLD3an0ndnF0", "emoji": "❤️"},
     {"token": "8752915627:AAFDAZr3qpUy8t8mJJ06n16A8pO1dj5Yf1Y", "emoji": "🔥"},
     {"token": "8969735951:AAGwKdLEZScmFLnrXGLTF5JRg7MSqyl6ZIo", "emoji": "🎉"},
     {"token": "8901459374:AAHGwg-O7p2UjUwBqJULBCYU9AaWW7UEQ_Q", "emoji": "🤩"},
@@ -30,20 +30,23 @@ async def send_single_reaction(session, token, chat_id, message_id, emoji):
         async with session.post(url, json=payload, timeout=10) as resp:
             res = await resp.json()
             if res.get("ok"):
-                print(f"[{emoji}] Reaksiya bosildi! Bot: {token[:10]}...")
+                print(f"[{emoji}] Реакция успешно поставлена! Бот: {token[:10]}...")
             else:
-                print(f"Xato ({token[:10]}...): {res.get('description')}")
+                print(f"Ошибка реакции ({token[:10]}...): {res.get('description')}")
     except Exception as e:
-        print(f"Ulanish xatosi ({token[:10]}...): {e}")
+        print(f"Ошибка сети ({token[:10]}...): {e}")
 
 async def handle_webhook(request):
     try:
         data = await request.json()
-        if "channel_post" in data:
-            post = data["channel_post"]
+        
+        # Перехватываем любые типы постов в канале
+        post = data.get("channel_post") or data.get("edited_channel_post")
+        
+        if post:
             chat_id = post["chat"]["id"]
             message_id = post["message_id"]
-            print(f"Yangi post tushdi! Message ID: {message_id}")
+            print(f"!!! ПОСТ ОБНАРУЖЕН !!! ID: {message_id}, Chat ID: {chat_id}")
             
             async with aiohttp.ClientSession() as session:
                 tasks = [
@@ -51,8 +54,12 @@ async def handle_webhook(request):
                     for bot in BOT_REACTIONS
                 ]
                 await asyncio.gather(*tasks)
+        else:
+            print(f"Получен запрос другого типа: {list(data.keys())}")
+            
     except Exception as e:
-        print(f"Webhook xatosi: {e}")
+        print(f"Ошибка обработки вебхука: {e}")
+        
     return web.Response(text="OK", status=200)
 
 async def handle_health(request):
@@ -63,15 +70,20 @@ async def setup_webhook():
     master_token = BOT_REACTIONS[0]["token"]
     webhook_url = f"https://{DOMAIN}/webhook"
     url = f"https://api.telegram.org/bot{master_token}/setWebhook"
-    payload = {"url": webhook_url, "allowed_updates": ["channel_post"]}
+    
+    # Разрешаем все типы обновлений для каналов
+    payload = {
+        "url": webhook_url,
+        "allowed_updates": ["channel_post", "edited_channel_post"]
+    }
     
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as resp:
                 res = await resp.json()
-                print(f"Webhook sozlandi: {res}")
+                print(f"Настройка Webhook: {res}")
     except Exception as e:
-        print(f"Webhook o'rnatishda xato: {e}")
+        print(f"Ошибка установки Webhook: {e}")
 
 async def main():
     app = web.Application()
@@ -84,12 +96,9 @@ async def main():
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
-    print(f"Server {port}-portda ishga tushdi.")
+    print(f"Сервер запущен на порту {port}")
 
-    # Webhookni fonda ishga tushirish
     asyncio.create_task(setup_webhook())
-
-    # Cheksiz ishlash tsikli
     await asyncio.Event().wait()
 
 if __name__ == "__main__":

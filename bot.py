@@ -17,23 +17,8 @@ BOT_REACTIONS = [
     {"token": "8763999740:AAHYKvyfv1ypC5rDZ_F9VulFa9GMqJauYZw", "emoji": "😍"}
 ]
 
-# Railway konteyneri to'xtab qolmasligi uchun HTTP Health Check server
-async def handle_ping(request):
-    return web.Response(text="Botlar faol va ishlamoqda!")
-
-async def start_health_check_server():
-    app = web.Application()
-    app.router.add_get("/", handle_ping)
-    app.router.add_get("/health", handle_ping)
-    
-    port = int(os.environ.get("PORT", 8080))
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-    print(f"Railway Health Check Server {port}-portda ishga tushdi.")
-
-async def set_reaction(session, token, chat_id, message_id, emoji):
+# Bir dona bot orqali reaksiya yuborish
+async def send_single_reaction(session, token, chat_id, message_id, emoji):
     url = f"https://api.telegram.org/bot{token}/setMessageReaction"
     payload = {
         "chat_id": chat_id,
@@ -42,28 +27,32 @@ async def set_reaction(session, token, chat_id, message_id, emoji):
     }
     try:
         async with session.post(url, json=payload, timeout=10) as resp:
-            data = await resp.json()
-            if data.get("ok"):
+            res = await resp.json()
+            if res.get("ok"):
                 print(f"[{emoji}] Reaksiya bosildi! Bot: {token[:10]}...")
             else:
-                print(f"Xatolik ({token[:10]}...): {data.get('description')}")
+                print(f"Xatolik ({token[:10]}...): {res.get('description')}")
     except Exception as e:
-        print(f"Ulanish xatosi ({token[:10]}...): {e}")
+        print(f"Xato ({token[:10]}...): {e}")
 
-async def listen_bot(session, bot_info):
-    token = bot_info["token"]
-    emoji = bot_info["emoji"]
+# Barcha 11 bot bir vaqtda reaksiya yuboradi
+async def trigger_all_reactions(session, chat_id, message_id):
+    print(f"Yangi post aniqlandi ({message_id}). Barcha botlar reaksiya bosmoqda...")
+    tasks = [
+        send_single_reaction(session, bot["token"], chat_id, message_id, bot["emoji"])
+        for bot in BOT_REACTIONS
+    ]
+    await asyncio.gather(*tasks)
+
+# Asosiy kuzatuvchi (Master Bot)
+async def master_listener(session):
+    master_token = BOT_REACTIONS[0]["token"]
     offset = 0
-
-    print(f"Bot ishga tushdi: {token[:10]}...")
+    print("Master bot kanaldagi yangi postlarni kuzatishni boshladi...")
 
     while True:
-        url = f"https://api.telegram.org/bot{token}/getUpdates"
-        params = {
-            "offset": offset,
-            "timeout": 20,
-            "allowed_updates": ["channel_post"]
-        }
+        url = f"https://api.telegram.org/bot{master_token}/getUpdates"
+        params = {"offset": offset, "timeout": 20, "allowed_updates": ["channel_post"]}
         try:
             async with session.get(url, params=params, timeout=30) as resp:
                 if resp.status == 200:
@@ -74,28 +63,23 @@ async def listen_bot(session, bot_info):
                             post = update["channel_post"]
                             chat_id = post["chat"]["id"]
                             message_id = post["message_id"]
-                            await set_reaction(session, token, chat_id, message_id, emoji)
+                            await trigger_all_reactions(session, chat_id, message_id)
         except Exception:
-            await asyncio.sleep(3)
+            await asyncio.sleep(2)
 
         await asyncio.sleep(0.5)
 
 async def main():
-    # 1. Railway to'xtab qolmasligi uchun serverni yoqamiz
-    await start_health_check_server()
-
-    # 2. Botlarni ishga tushiramiz
-    print("Barcha botlar Telegram bilan bog'lanmoqda...")
     timeout = aiohttp.ClientTimeout(total=35)
     async with aiohttp.ClientSession(timeout=timeout) as session:
-        tasks = [listen_bot(session, bot) for bot in BOT_REACTIONS]
-        await asyncio.gather(*tasks)
+        await master_listener(session)
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         pass
+
 
 
 

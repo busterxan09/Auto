@@ -1,7 +1,5 @@
 import asyncio
-from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
-from telegram.error import TimedOut, NetworkError
+import aiohttp
 
 BOT_REACTIONS = [
     {"token": "8873673862:AAHkh6-SnfK7MGqr7xuEegxcBE0jlvCiJQE", "emoji": "👍"},
@@ -17,69 +15,64 @@ BOT_REACTIONS = [
     {"token": "8763999740:AAHYKvyfv1ypC5rDZ_F9VulFa9GMqJauYZw", "emoji": "😍"}
 ]
 
-async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    post = update.channel_post
-    if not post:
-        return
-
-    chat_id = post.chat_id
-    message_id = post.message_id
-    assigned_emoji = context.bot_data.get("emoji", "👍")
-
+async def set_reaction(session, token, chat_id, message_id, emoji):
+    url = f"https://api.telegram.org/bot{token}/setMessageReaction"
+    payload = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "reaction": [{"type": "emoji", "emoji": emoji}]
+    }
     try:
-        await context.bot.set_message_reaction(
-            chat_id=chat_id,
-            message_id=message_id,
-            reaction=[{"type": "emoji", "emoji": assigned_emoji}]
-        )
-        print(f"[{assigned_emoji}] Reaksiya bosildi -> Post ID: {message_id}")
+        async with session.post(url, json=payload, timeout=10) as resp:
+            data = await resp.json()
+            if data.get("ok"):
+                print(f"[{emoji}] Reaksiya bosildi! Bot: {token[:10]}...")
+            else:
+                print(f"Xatolik ({token[:10]}...): {data.get('description')}")
     except Exception as e:
-        print(f"Reaksiya bosishda xatolik: {e}")
+        print(f"Ulanish xatosi ({token[:10]}...): {e}")
 
-async def start_bot(bot_info):
+async def listen_bot(session, bot_info):
     token = bot_info["token"]
     emoji = bot_info["emoji"]
+    offset = 0
 
-    # Read va Connect timeout vaqtini 30 soniyaga uzaytiramiz
-    app = (
-        ApplicationBuilder()
-        .token(token)
-        .read_timeout(30)
-        .write_timeout(30)
-        .connect_timeout(30)
-        .build()
-    )
-    app.bot_data["emoji"] = emoji
-    app.add_handler(MessageHandler(filters.ChatType.CHANNEL, handle_channel_post))
+    print(f"Bot ishga tushdi: {token[:10]}...")
 
-    await app.initialize()
-    await app.start()
-
-    # Xatolar berib dastur to'xtab qolmasligi uchun doimiy qayta ulanish sikli
     while True:
+        url = f"https://api.telegram.org/bot{token}/getUpdates"
+        params = {
+            "offset": offset,
+            "timeout": 20,
+            "allowed_updates": ["channel_post"]
+        }
         try:
-            await app.updater.start_polling(drop_pending_updates=True)
-            break
-        except (TimedOut, NetworkError):
-            print(f"Ulanishda uzilish bo'ldi ({token[:10]}...), 5 soniyadan so'ng qayta urinilmoqda...")
-            await asyncio.sleep(5)
-        except Exception as e:
-            print(f"Noma'lum xatolik ({token[:10]}...): {e}")
-            await asyncio.sleep(5)
+            async with session.get(url, params=params, timeout=30) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    for update in data.get("result", []):
+                        offset = update["update_id"] + 1
+                        if "channel_post" in update:
+                            post = update["channel_post"]
+                            chat_id = post["chat"]["id"]
+                            message_id = post["message_id"]
+                            await set_reaction(session, token, chat_id, message_id, emoji)
+        except Exception:
+            await asyncio.sleep(3)
+
+        await asyncio.sleep(0.5)
 
 async def main():
     print("Barcha botlar ishga tushmoqda...")
-    for b in BOT_REACTIONS:
-        asyncio.create_task(start_bot(b))
-        # Botlar bir vaqtning o'zida yopishib so'rov yubormasligi uchun 1 soniya kutamiz
-        await asyncio.sleep(1)
-
-    while True:
-        await asyncio.sleep(3600)
+    timeout = aiohttp.ClientTimeout(total=35)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        tasks = [listen_bot(session, bot) for bot in BOT_REACTIONS]
+        await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         pass
+
 

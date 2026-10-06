@@ -1,5 +1,7 @@
 import asyncio
+import os
 import aiohttp
+from aiohttp import web
 
 BOT_REACTIONS = [
     {"token": "8873673862:AAHkh6-SnfK7MGqr7xuEegxcBE0jlvCiJQE", "emoji": "👍"},
@@ -14,6 +16,22 @@ BOT_REACTIONS = [
     {"token": "8908759051:AAEvxSu2UfULGryrIp5s9CJRWl3bvNZIPG4", "emoji": "🫡"},
     {"token": "8763999740:AAHYKvyfv1ypC5rDZ_F9VulFa9GMqJauYZw", "emoji": "😍"}
 ]
+
+# Railway konteyneri to'xtab qolmasligi uchun HTTP Health Check server
+async def handle_ping(request):
+    return web.Response(text="Botlar faol va ishlamoqda!")
+
+async def start_health_check_server():
+    app = web.Application()
+    app.router.add_get("/", handle_ping)
+    app.router.add_get("/health", handle_ping)
+    
+    port = int(os.environ.get("PORT", 8080))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"Railway Health Check Server {port}-portda ishga tushdi.")
 
 async def set_reaction(session, token, chat_id, message_id, emoji):
     url = f"https://api.telegram.org/bot{token}/setMessageReaction"
@@ -63,7 +81,11 @@ async def listen_bot(session, bot_info):
         await asyncio.sleep(0.5)
 
 async def main():
-    print("Barcha botlar ishga tushmoqda...")
+    # 1. Railway to'xtab qolmasligi uchun serverni yoqamiz
+    await start_health_check_server()
+
+    # 2. Botlarni ishga tushiramiz
+    print("Barcha botlar Telegram bilan bog'lanmoqda...")
     timeout = aiohttp.ClientTimeout(total=35)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         tasks = [listen_bot(session, bot) for bot in BOT_REACTIONS]
@@ -74,5 +96,6 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         pass
+
 
 

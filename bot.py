@@ -3,8 +3,8 @@ import logging
 import random
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReactionTypeEmoji
+from aiogram.exceptions import TelegramUnauthorizedError
 
-# Barcha 8 ta botingizning yangilangan tokenlari:
 TOKENS = [
     "8841360251:AAHeVgnW8C7p8cYVZBgcIQWK5y20BBjMHYk",
     "8827183894:AAFHaZShqFaRFkZU92iEwlWHTFpOHhLe0NA",
@@ -16,13 +16,7 @@ TOKENS = [
     "8541715719:AAGsO2TxnCrcP5EuZXqzWwvCz6Bsk8GT-ms",
 ]
 
-# Kunimert reaksjonsliste (Ild, Hjerte, 100, Due):
-REACTIONS = [
-    "🔥",
-    "❤️",
-    "💯",
-    "🕊️",
-]
+REACTIONS = ["🔥", "❤️", "💯", "🕊️"]
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,7 +29,6 @@ async def start_bot(token: str):
     async def auto_react_to_channel_post(message: types.Message):
         try:
             chosen_emoji = random.choice(REACTIONS)
-
             await bot.set_message_reaction(
                 chat_id=message.chat.id,
                 message_id=message.message_id,
@@ -43,18 +36,25 @@ async def start_bot(token: str):
                 is_big=False,
             )
             logging.info(
-                f"Reaksiya ({chosen_emoji}) qo'yildi | Bot ID: {token[:10]}..."
+                f"Реакция ({chosen_emoji}) поставлена | Bot ID: {token[:10]}..."
             )
         except Exception as e:
-            logging.error(f"Xatolik yuz berdi ({token[:10]}...): {e}")
+            logging.error(f"Ошибка реакции ({token[:10]}...): {e}")
 
     try:
-        await bot.delete_webhook(drop_pending_updates=True)
+        # Проверяем токен перед запуском
         me = await bot.get_me()
-        logging.info(f"Bot ishga tushdi: @{me.username}")
+        await bot.delete_webhook(drop_pending_updates=True)
+        logging.info(f"Бот запущен успешно: @{me.username}")
         await dp.start_polling(bot)
+    except TelegramUnauthorizedError:
+        logging.error(
+            f"НЕВЕРНЫЙ ТОКЕН! Пропущен: {token[:10]}... Проверьте токен в @BotFather!"
+        )
     except Exception as e:
-        logging.error(f"Botni ishga tushirishda xatolik ({token[:10]}...): {e}")
+        logging.error(f"Ошибка запуска бота ({token[:10]}...): {e}")
+    finally:
+        await bot.session.close()
 
 
 async def main():

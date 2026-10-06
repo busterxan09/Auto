@@ -3,8 +3,6 @@ import os
 import aiohttp
 from aiohttp import web
 
-DOMAIN = "worker-production-a852.up.railway.app"
-
 BOT_REACTIONS = [
     {"token": "8873673862:AAHkh6-SnfK7MGqr7xuEegxcBE0jlvCiJQE", "emoji": "👍"},
     {"token": "8957810259:AAGDbR19Q-6LCFL_dGEhH9gnLD3an0ndnF0", "emoji": "❤️"},
@@ -27,78 +25,66 @@ async def send_single_reaction(session, token, chat_id, message_id, emoji):
         "reaction": [{"type": "emoji", "emoji": emoji}]
     }
     try:
-        async with session.post(url, json=payload, timeout=10) as resp:
+        async with session.post(url, json=payload, timeout=5) as resp:
             res = await resp.json()
             if res.get("ok"):
-                print(f"[{emoji}] Реакция успешно поставлена! Бот: {token[:10]}...")
+                print(f"[{emoji}] Reaksiya qo'yildi! Bot: {token[:10]}...")
             else:
-                print(f"Ошибка реакции ({token[:10]}...): {res.get('description')}")
+                print(f"Xato ({token[:10]}...): {res.get('description')}")
     except Exception as e:
-        print(f"Ошибка сети ({token[:10]}...): {e}")
+        print(f"Ulanish xatosi ({token[:10]}...): {e}")
 
-async def handle_webhook(request):
-    try:
-        data = await request.json()
+async def start_polling():
+    master_token = BOT_REACTIONS[0]["token"]
+    
+    async with aiohttp.ClientSession() as session:
+        # Eski webhookni tozalash
+        await session.post(f"https://api.telegram.org/bot{master_token}/deleteWebhook")
         
-        # Перехватываем любые типы постов в канале
-        post = data.get("channel_post") or data.get("edited_channel_post")
+        offset = 0
+        print("Polling ishga tushdi! Yangi postlar kutilmoqda...")
         
-        if post:
-            chat_id = post["chat"]["id"]
-            message_id = post["message_id"]
-            print(f"!!! ПОСТ ОБНАРУЖЕН !!! ID: {message_id}, Chat ID: {chat_id}")
-            
-            async with aiohttp.ClientSession() as session:
-                tasks = [
-                    send_single_reaction(session, bot["token"], chat_id, message_id, bot["emoji"])
-                    for bot in BOT_REACTIONS
-                ]
-                await asyncio.gather(*tasks)
-        else:
-            print(f"Получен запрос другого типа: {list(data.keys())}")
-            
-    except Exception as e:
-        print(f"Ошибка обработки вебхука: {e}")
-        
-    return web.Response(text="OK", status=200)
+        while True:
+            try:
+                url = f"https://api.telegram.org/bot{master_token}/getUpdates?offset={offset}&timeout=10"
+                async with session.get(url, timeout=15) as resp:
+                    data = await resp.json()
+                    
+                    if data.get("ok"):
+                        for update in data.get("result", []):
+                            offset = update["update_id"] + 1
+                            post = update.get("channel_post") or update.get("edited_channel_post")
+                            
+                            if post:
+                                chat_id = post["chat"]["id"]
+                                message_id = post["message_id"]
+                                print(f"Yangi post topildi! ID: {message_id}")
+                                
+                                tasks = [
+                                    send_single_reaction(session, bot["token"], chat_id, message_id, bot["emoji"])
+                                    for bot in BOT_REACTIONS
+                                ]
+                                await asyncio.gather(*tasks)
+            except Exception as e:
+                print(f"Polling xatosi: {e}")
+            await asyncio.sleep(1)
 
 async def handle_health(request):
     return web.Response(text="OK", status=200)
 
-async def setup_webhook():
-    await asyncio.sleep(2)
-    master_token = BOT_REACTIONS[0]["token"]
-    webhook_url = f"https://{DOMAIN}/webhook"
-    url = f"https://api.telegram.org/bot{master_token}/setWebhook"
-    
-    # Разрешаем все типы обновлений для каналов
-    payload = {
-        "url": webhook_url,
-        "allowed_updates": ["channel_post", "edited_channel_post"]
-    }
-    
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload) as resp:
-                res = await resp.json()
-                print(f"Настройка Webhook: {res}")
-    except Exception as e:
-        print(f"Ошибка установки Webhook: {e}")
-
 async def main():
     app = web.Application()
     app.router.add_get("/", handle_health)
-    app.router.add_get("/health", handle_health)
-    app.router.add_post("/webhook", handle_webhook)
-
+    
     port = int(os.environ.get("PORT", 8080))
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
-    print(f"Сервер запущен на порту {port}")
+    print(f"Server {port}-portda ishlamoqda...")
 
-    asyncio.create_task(setup_webhook())
+    # Pollingni alohida fonda yurgizish
+    asyncio.create_task(start_polling())
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
@@ -106,10 +92,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         pass
-
-
-
-
-
-
-

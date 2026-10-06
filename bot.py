@@ -17,23 +17,9 @@ BOT_REACTIONS = [
     {"token": "8763999740:AAHYKvyfv1ypC5rDZ_F9VulFa9GMqJauYZw", "emoji": "😍"}
 ]
 
-# 1. Railway uchun Web Server (Health Check)
 async def handle_health(request):
-    return web.Response(text="Botlar faol rejimda!")
+    return web.Response(text="OK", status=200)
 
-async def start_web_server():
-    app = web.Application()
-    app.router.add_get("/", handle_health)
-    app.router.add_get("/health", handle_health)
-    
-    port = int(os.environ.get("PORT", 8080))
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-    print(f"Railway Web Server {port}-portda faollashtirildi.")
-
-# 2. Reaksiya yuborish funksiyalari
 async def send_single_reaction(session, token, chat_id, message_id, emoji):
     url = f"https://api.telegram.org/bot{token}/setMessageReaction"
     payload = {
@@ -59,7 +45,6 @@ async def trigger_all_reactions(session, chat_id, message_id):
     ]
     await asyncio.gather(*tasks)
 
-# 3. Master bot kuzatuvi
 async def master_listener(session):
     master_token = BOT_REACTIONS[0]["token"]
     offset = 0
@@ -84,19 +69,30 @@ async def master_listener(session):
 
         await asyncio.sleep(0.5)
 
-async def main():
-    # Railway o'chib qolmasligi uchun Web serverni parallel ishga tushirish
-    await start_web_server()
-    
+async def start_background_tasks(app):
     timeout = aiohttp.ClientTimeout(total=35)
-    async with aiohttp.ClientSession(timeout=timeout) as session:
-        await master_listener(session)
+    session = aiohttp.ClientSession(timeout=timeout)
+    app['client_session'] = session
+    app['bot_task'] = asyncio.create_task(master_listener(session))
+
+async def cleanup_background_tasks(app):
+    app['bot_task'].cancel()
+    await app['client_session'].close()
+
+def main():
+    app = web.Application()
+    app.router.add_get("/", handle_health)
+    app.router.add_get("/health", handle_health)
+    
+    app.on_startup.append(start_background_tasks)
+    app.on_cleanup.append(cleanup_background_tasks)
+
+    port = int(os.environ.get("PORT", 8080))
+    web.run_app(app, host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        pass
+    main()
+
 
 
 

@@ -5,23 +5,26 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReactionTypeEmoji
 from aiogram.exceptions import TelegramUnauthorizedError
 
+# Barcha 8 ta yangilangan tokenlar ro'yxati:
 TOKENS = [
-    "8841360251:AAHeVgnW8C7p8cYVZBgcIQWK5y20BBjMHYk",
-    "8827183894:AAFHaZShqFaRFkZU92iEwlWHTFpOHhLe0NA",
-    "8518942139:AAH_ogn6a5M5SMaSv-J67fn4-U_VELjDzok",
-    "8901459374:AAGwK2QVsS96_V7-hbIM3CF0bPgu1v2u27I",
-    "8969735951:AAE8opS3yf7HqKKT41VJYe-wgj_ifsu0apE",
-    "8752915627:AAFdwkzXKDlRbaqz5WRdQYuYPsAanLZ4ZeE",
-    "8711233720:AAHB7ybdObUp4Jyvx1nugu4mkfvgPlgYhYQ",
-    "8541715719:AAGsO2TxnCrcP5EuZXqzWwvCz6Bsk8GT-ms",
+    "8957810259:AAHdXldV9mFjcxFSw5OwtLaZ1YWkUWnj00I",
+    "8752915627:AAEYf-0dfIaJ1bC25uRaKwA8KdA-s5lEE0o",
+    "8901459374:AAHFxk4ocr5h7dgIeOzfRZJk2ORNHQC5MI4",
+    "8841360251:AAHBBSuiOEaZhQOVVEym51uUm6ZxQz4cDWE",
+    "8873673862:AAFJs0xdcPHkCNIRl564_6aEvkL7i697u4g",
+    "8969735951:AAGvy357HEpeFp4okziwIfKmH3adzKwJ6XY",
+    "8518942139:AAFoxkfcyFrJzFHz_JS2RtRBlvehj1XktLY",
+    "8711233720:AAFhYEpOwPCgscduOe1M_lStND404N3sMig",
 ]
 
-REACTIONS = ["🔥", "❤️", "💯", "🕊️"]
+# Tanlangan 4 ta reaksiya:
+REACTIONS = ["🔥", "❤️", "💯", "🕊️️"]
 
 logging.basicConfig(level=logging.INFO)
 
 
 async def start_bot(token: str):
+    token = token.strip()
     bot = Bot(token=token)
     dp = Dispatcher()
 
@@ -36,23 +39,22 @@ async def start_bot(token: str):
                 is_big=False,
             )
             logging.info(
-                f"Реакция ({chosen_emoji}) поставлена | Bot ID: {token[:10]}..."
+                f"Reaksiya ({chosen_emoji}) qo'yildi | Bot ID: {token[:10]}..."
             )
         except Exception as e:
-            logging.error(f"Ошибка реакции ({token[:10]}...): {e}")
+            logging.error(f"Xatolik yuz berdi ({token[:10]}...): {e}")
 
     try:
-        # Проверяем токен перед запуском
         me = await bot.get_me()
         await bot.delete_webhook(drop_pending_updates=True)
-        logging.info(f"Бот запущен успешно: @{me.username}")
+        logging.info(f"MUVAFFAQIYATLI ISHGA TUSHMADI: @{me.username}")
         await dp.start_polling(bot)
     except TelegramUnauthorizedError:
         logging.error(
-            f"НЕВЕРНЫЙ ТОКЕН! Пропущен: {token[:10]}... Проверьте токен в @BotFather!"
+            f"XATO TOKEN! O'tkazib yuborildi: {token[:10]}... @BotFather'dan tekshiring!"
         )
     except Exception as e:
-        logging.error(f"Ошибка запуска бота ({token[:10]}...): {e}")
+        logging.error(f"Botni ishga tushirishda xatolik ({token[:10]}...): {e}")
     finally:
         await bot.session.close()
 

@@ -17,6 +17,7 @@ REACTIONS = ["🔥", "❤️", "💯", "🕊️"]
 
 logging.basicConfig(level=logging.INFO)
 
+# Barcha bot ob'ektlarini yaratamiz
 bots = [Bot(token=t) for t in TOKENS]
 dp = Dispatcher()
 
